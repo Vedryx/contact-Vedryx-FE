@@ -1,6 +1,14 @@
 // Client-side booking config — kept in sync with api/book.js
 export const TZ = 'Asia/Kolkata'
-export const SLOTS = ['10:00', '10:15', '10:30', '10:45', '11:00', '11:15', '11:30', '11:45']
+// 15-min slots from 10:00 up to (but not incl) midnight → last slot 23:45.
+function makeSlots(startH = 10, endExclH = 24, stepMin = 15) {
+  const out = []
+  for (let m = startH * 60; m < endExclH * 60; m += stepMin) {
+    out.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`)
+  }
+  return out
+}
+export const SLOTS = makeSlots(10, 24, 15)
 export const HORIZON_DAYS = 14
 
 // today's date (YYYY-MM-DD) in IST

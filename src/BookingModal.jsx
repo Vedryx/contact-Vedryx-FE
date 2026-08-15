@@ -7,6 +7,7 @@ export default function BookingModal({ open, onClose }) {
   const [time, setTime] = useState('')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [status, setStatus] = useState('idle') // idle | sending | done | error
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
@@ -21,6 +22,7 @@ export default function BookingModal({ open, onClose }) {
       setResult(null)
       setError('')
     }
+    // note: name/email/phone persist across reopen on purpose
   }, [open, days])
 
   // close on Escape + lock body scroll
@@ -36,7 +38,9 @@ export default function BookingModal({ open, onClose }) {
   if (!open) return null
 
   const slotsForDay = SLOTS.map((t) => ({ t, disabled: !slotIsFuture(date, t) }))
-  const canSubmit = date && time && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && status !== 'sending'
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  const phoneOk = /^\+?\d{7,15}$/.test(phone.replace(/[\s()\-.]/g, ''))
+  const canSubmit = date && time && emailOk && phoneOk && status !== 'sending'
 
   async function submit(e) {
     e.preventDefault()
@@ -47,7 +51,7 @@ export default function BookingModal({ open, onClose }) {
       const r = await fetch('/api/book', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, date, time }),
+        body: JSON.stringify({ name, email, phone, date, time }),
       })
       const data = await r.json()
       if (!r.ok || !data.ok) throw new Error(data.error || 'Something went wrong. Please try again.')
@@ -80,7 +84,7 @@ export default function BookingModal({ open, onClose }) {
         ) : (
           <form className="book-form" onSubmit={submit}>
             <h2 className="modal-title">Book a 15-minute demo</h2>
-            <p className="modal-sub">All times IST (10:00 AM – 12:00 PM)</p>
+            <p className="modal-sub">All times IST (10:00 AM – 12:00 AM)</p>
 
             <div className="field">
               <label className="field-label">Date</label>
@@ -129,6 +133,11 @@ export default function BookingModal({ open, onClose }) {
             <div className="field">
               <label className="field-label" htmlFor="bk-email">Email</label>
               <input id="bk-email" className="input" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
+            </div>
+
+            <div className="field">
+              <label className="field-label" htmlFor="bk-phone">Phone</label>
+              <input id="bk-phone" className="input" type="tel" required autoComplete="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" />
             </div>
 
             {status === 'error' && <p className="book-error">{error}</p>}
