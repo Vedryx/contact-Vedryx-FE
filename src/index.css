@@ -18,6 +18,14 @@
 
 html { -webkit-text-size-adjust: 100%; }
 
+html, body {
+  /* Never allow the page itself to scroll sideways. `clip` keeps position:fixed
+     working (unlike `hidden`); overflow-x:hidden is the fallback for older engines. */
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -290,6 +298,7 @@ button.cta {
   max-width: 480px;
   max-height: 92dvh;
   overflow-y: auto;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   background: #0E1424;
   border: 1px solid rgba(244, 246, 251, 0.1);
@@ -354,17 +363,12 @@ button.cta {
 .field-label .opt { color: rgba(244, 246, 251, 0.32); letter-spacing: 0.08em; }
 .field-hint { margin: 8px 0 0; font-size: 12px; color: rgba(244, 246, 251, 0.45); }
 
-/* date chips — horizontal scroll */
+/* date chips — wrapping grid, fully contained (no sideways scroll / edge bleed) */
 .chip-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
   gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  scrollbar-width: thin;
-  -webkit-overflow-scrolling: touch;
 }
-.chip-row::-webkit-scrollbar { height: 4px; }
-.chip-row::-webkit-scrollbar-thumb { background: rgba(244, 246, 251, 0.15); border-radius: 4px; }
 
 .chip {
   flex: none;
@@ -389,8 +393,8 @@ button.cta {
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  min-width: 62px;
-  padding: 10px 10px;
+  width: 100%;
+  padding: 10px 8px;
 }
 .chip-dow { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(244, 246, 251, 0.55); }
 .chip--on .chip-dow { color: rgba(244, 246, 251, 0.85); }
@@ -403,6 +407,7 @@ button.cta {
   gap: 8px;
   max-height: 196px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 2px 4px 2px 2px;
   scrollbar-width: thin;
   scrollbar-color: rgba(244, 246, 251, 0.2) transparent;
