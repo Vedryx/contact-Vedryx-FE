@@ -3,7 +3,15 @@ import crypto from 'node:crypto'
 
 // ---- Booking config (kept in sync with src/booking.js on the client) ----
 const TZ = 'Asia/Kolkata'
-const SLOTS = ['10:00', '10:15', '10:30', '10:45', '11:00', '11:15', '11:30', '11:45']
+// 15-min slots from 10:00 up to (but not incl) midnight → last slot 23:45.
+function makeSlots(startH = 10, endExclH = 24, stepMin = 15) {
+  const out = []
+  for (let m = startH * 60; m < endExclH * 60; m += stepMin) {
+    out.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`)
+  }
+  return out
+}
+const SLOTS = makeSlots(10, 24, 15)
 const SLOT_MINUTES = 15
 const HORIZON_DAYS = 14
 const MEETING_TITLE = 'Vedryx — 15-minute demo'
@@ -14,6 +22,8 @@ const FROM = process.env.BOOKING_FROM || 'vedryxTech <booking@team.vedryxtech.co
 const REPLY_TO = process.env.BOOKING_REPLY_TO || 'we@vedryxtech.com'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+// lenient international phone: optional +, then 7–15 digits (separators stripped first)
+const PHONE_RE = /^\+?\d{7,15}$/
 
 // ---- helpers -------------------------------------------------------------
 
@@ -102,12 +112,13 @@ function guestEmailHtml({ name, whenStr, meetLink }) {
   </div></body></html>`
 }
 
-function hostEmailHtml({ name, email, whenStr, meetLink }) {
+function hostEmailHtml({ name, email, phone, whenStr, meetLink }) {
   return `<!doctype html><html><body style="font-family:system-ui,Arial,sans-serif;color:#111;">
     <h2 style="margin:0 0 10px;">New demo booked</h2>
     <table style="border-collapse:collapse;font-size:14px;">
       <tr><td style="padding:4px 12px 4px 0;color:#666;">Name</td><td>${escapeHtml(name || '—')}</td></tr>
       <tr><td style="padding:4px 12px 4px 0;color:#666;">Email</td><td>${escapeHtml(email)}</td></tr>
+      <tr><td style="padding:4px 12px 4px 0;color:#666;">Phone</td><td>${escapeHtml(phone)}</td></tr>
       <tr><td style="padding:4px 12px 4px 0;color:#666;">When</td><td>${escapeHtml(whenStr)}</td></tr>
       <tr><td style="padding:4px 12px 4px 0;color:#666;">Meet</td><td><a href="${escapeAttr(meetLink)}">${escapeHtml(meetLink)}</a></td></tr>
     </table></body></html>`
@@ -129,11 +140,14 @@ export default async function handler(req, res) {
   const body = typeof req.body === 'string' ? safeParse(req.body) : req.body || {}
   const name = (body.name || '').toString().trim().slice(0, 120)
   const email = (body.email || '').toString().trim().slice(0, 254)
+  const phone = (body.phone || '').toString().trim().slice(0, 30)
   const date = (body.date || '').toString().trim()
   const time = (body.time || '').toString().trim()
+  const phoneDigits = phone.replace(/[\s()\-.]/g, '')
 
   // ---- validation ----
   if (!EMAIL_RE.test(email)) return res.status(400).json({ ok: false, error: 'Enter a valid email address.' })
+  if (!PHONE_RE.test(phoneDigits)) return res.status(400).json({ ok: false, error: 'Enter a valid phone number.' })
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'Pick a date.' })
   if (!SLOTS.includes(time)) return res.status(400).json({ ok: false, error: 'Pick a valid time slot.' })
 
@@ -158,7 +172,7 @@ export default async function handler(req, res) {
       sendUpdates: 'all',
       requestBody: {
         summary: MEETING_TITLE,
-        description: `15-minute intro demo with vedryxTech.${name ? `\nGuest: ${name}` : ''}\nBooked via contact.vedryxtech.com`,
+        description: `15-minute intro demo with vedryxTech.${name ? `\nGuest: ${name}` : ''}\nPhone: ${phone}\nEmail: ${email}\nBooked via contact.vedryxtech.com`,
         start: { dateTime: start.toISOString(), timeZone: TZ },
         end: { dateTime: end.toISOString(), timeZone: TZ },
         attendees: [{ email }, { email: NOTIFY, organizer: true, responseStatus: 'accepted' }],
@@ -193,7 +207,7 @@ export default async function handler(req, res) {
     await sendEmail({
       from: FROM, to: [NOTIFY], reply_to: email,
       subject: `New demo booked — ${name || email} — ${whenStr}`,
-      html: hostEmailHtml({ name, email, whenStr, meetLink }),
+      html: hostEmailHtml({ name, email, phone, whenStr, meetLink }),
     })
   } catch (e) { emailWarnings.push('host'); console.error('host email failed:', e?.message) }
 
