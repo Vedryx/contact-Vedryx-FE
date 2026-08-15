@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import BookingModal from './BookingModal.jsx'
+
 const ArrowIcon = () => (
   <svg className="cta-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M5 12h14M13 6l6 6-6 6" />
@@ -26,8 +29,7 @@ const WhatsAppIcon = () => (
 // The three contact actions, in priority order (matches the source design).
 const ACTIONS = [
   {
-    href: 'https://cal.com/vedryxtech/15min',
-    external: true,
+    action: 'book',
     variant: 'primary',
     Icon: CalendarIcon,
     title: 'Book a 15-minute demo',
@@ -53,11 +55,9 @@ const ACTIONS = [
   },
 ]
 
-function ContactAction({ href, external, variant, Icon, title, sub, subUpper, tabular }) {
-  const rel = external ? 'noopener noreferrer' : undefined
-  const target = external ? '_blank' : undefined
+function ActionInner({ Icon, title, sub, subUpper, tabular }) {
   return (
-    <a className={`cta cta--${variant}`} href={href} target={target} rel={rel}>
+    <>
       <Icon />
       <span className="cta-body">
         <span className="cta-title">{title}</span>
@@ -66,11 +66,30 @@ function ContactAction({ href, external, variant, Icon, title, sub, subUpper, ta
         </span>
       </span>
       <ArrowIcon />
+    </>
+  )
+}
+
+function ContactAction({ href, external, action, onBook, ...rest }) {
+  const cls = `cta cta--${rest.variant}`
+  if (action === 'book') {
+    return (
+      <button type="button" className={cls} onClick={onBook}>
+        <ActionInner {...rest} />
+      </button>
+    )
+  }
+  const rel = external ? 'noopener noreferrer' : undefined
+  const target = external ? '_blank' : undefined
+  return (
+    <a className={cls} href={href} target={target} rel={rel}>
+      <ActionInner {...rest} />
     </a>
   )
 }
 
 export default function App() {
+  const [booking, setBooking] = useState(false)
   return (
     <main className="stage">
       <section className="card">
@@ -86,8 +105,8 @@ export default function App() {
         </div>
 
         <div className="actions">
-          {ACTIONS.map((a) => (
-            <ContactAction key={a.href} {...a} />
+          {ACTIONS.map((a, i) => (
+            <ContactAction key={a.href || a.action || i} {...a} onBook={() => setBooking(true)} />
           ))}
         </div>
 
@@ -106,6 +125,8 @@ export default function App() {
         <span className="foot-tick" />
         <span className="foot-url">vedryxtech.com</span>
       </footer>
+
+      <BookingModal open={booking} onClose={() => setBooking(false)} />
     </main>
   )
 }

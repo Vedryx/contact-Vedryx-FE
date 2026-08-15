@@ -1,0 +1,48 @@
+// Client-side booking config — kept in sync with api/book.js
+export const TZ = 'Asia/Kolkata'
+export const SLOTS = ['10:00', '10:15', '10:30', '10:45', '11:00', '11:15', '11:30', '11:45']
+export const HORIZON_DAYS = 14
+
+// today's date (YYYY-MM-DD) in IST
+export function istToday() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date())
+}
+
+// list of the next HORIZON_DAYS dates (incl today), as { value, dow, day, month }
+export function upcomingDays() {
+  const base = new Date(`${istToday()}T00:00:00+05:30`)
+  const out = []
+  for (let i = 0; i <= HORIZON_DAYS; i++) {
+    const d = new Date(base.getTime())
+    d.setUTCDate(d.getUTCDate() + i)
+    const value = new Intl.DateTimeFormat('en-CA', {
+      timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(d)
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short',
+    }).formatToParts(d)
+    const get = (t) => parts.find((p) => p.type === t)?.value || ''
+    out.push({ value, dow: get('weekday'), day: get('day'), month: get('month'), isToday: i === 0 })
+  }
+  return out
+}
+
+// IST instant for a date+slot
+function istInstant(dateStr, timeStr) {
+  return new Date(`${dateStr}T${timeStr}:00+05:30`)
+}
+
+// is this slot still in the future?
+export function slotIsFuture(dateStr, timeStr) {
+  return istInstant(dateStr, timeStr).getTime() > Date.now()
+}
+
+// "10:00 AM" label
+export function slotLabel(timeStr) {
+  const [h, m] = timeStr.split(':').map(Number)
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const hh = ((h + 11) % 12) + 1
+  return `${hh}:${String(m).padStart(2, '0')} ${ampm}`
+}
